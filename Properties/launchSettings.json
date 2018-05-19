@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SimplyUpdate.BuildUpdate": {
+      "commandName": "Project",
+      "commandLineArgs": "-s \"C:\\Projects\\Maina.Handheld\\Maina.Client.BarcodeShooting\\bin\\Release\" -t path -d \"\\\\10.1.3.6\\c$\\inetpub\\wwwroot\\Updates\\HandHeldBarcodeShooting\""
+    }
+  }
+}
