@@ -1,6 +1,7 @@
 ﻿using CommandLine;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,35 +26,54 @@ namespace SimplyUpdate.BuildUpdate
 
 		public static async Task<int> SendToAzure(AzureOptions opts)
 		{
-			var zipFile = CreateZipFile(opts.Source);
+			CloudBlockBlob zipSnapshot = null;
+			CloudBlockBlob zipBlob = null;
+			try
+			{
+				var zipFile = CreateZipFile(opts.Source);
 
-			Console.WriteLine("Upload zip file.");
-			var storageCredentials = new StorageCredentials(opts.AccountName, opts.AccountKey);
-			var cloudStorageAccount = new CloudStorageAccount(storageCredentials, true);
-			var cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
+				Console.WriteLine("Upload zip file.");
+				var storageCredentials = new StorageCredentials(opts.AccountName, opts.AccountKey);
+				var cloudStorageAccount = new CloudStorageAccount(storageCredentials, true);
+				var cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
 
-			var container = cloudBlobClient.GetContainerReference(opts.ContainerName);
-			await container.CreateIfNotExistsAsync();
-			
-			var zipBlob = container.GetBlockBlobReference(opts.Destination + "/software.zip");
-			await zipBlob.UploadFromFileAsync(zipFile);
+				var container = cloudBlobClient.GetContainerReference(opts.ContainerName);
+				await container.CreateIfNotExistsAsync();
 
-			Console.WriteLine("Update version.");
-			var xmlBlob = container.GetBlockBlobReference(opts.Destination + "/software.xml");
+				zipBlob = container.GetBlockBlobReference(opts.Destination + "/software.zip");
 
-			var doc = CreateOrUpdateVersionFile(
-				await xmlBlob.ExistsAsync() ? XDocument.Parse(await xmlBlob.DownloadTextAsync()) : null,
-				zipFile,
-				opts
-				);
-			
-			await xmlBlob.UploadTextAsync(doc.ToString());
+				if (await zipBlob.ExistsAsync())
+					zipSnapshot = await zipBlob.CreateSnapshotAsync();
+				await zipBlob.UploadFromFileAsync(zipFile);
 
-			File.Delete(zipFile);
+				Console.WriteLine("Update version.");
+				var xmlBlob = container.GetBlockBlobReference(opts.Destination + "/software.xml");
 
-			//Console.WriteLine($"Published version {previousVer} -> {currentVer}");
+				var doc = CreateOrUpdateVersionFile(
+					await xmlBlob.ExistsAsync() ? XDocument.Parse(await xmlBlob.DownloadTextAsync()) : null,
+					zipFile,
+					opts
+					);
 
-			return 0;
+				//if (await xmlBlob.ExistsAsync())
+				//	await xmlBlob.CreateSnapshotAsync();
+				await xmlBlob.UploadTextAsync(doc.ToString());
+
+				await zipSnapshot.DeleteAsync();
+				File.Delete(zipFile);
+
+				return 0;
+			}
+			catch(Exception ex)
+			{
+				if (zipBlob != null && zipSnapshot != null) 
+				{
+					await zipBlob.StartCopyAsync(zipSnapshot);
+					await zipSnapshot.DeleteAsync();
+				}
+				Console.WriteLine(ex.Message);
+				return 1;
+			}
 		}
 
 		private static XDocument CreateOrUpdateVersionFile(XDocument currentFile, String zipFile, BaseOptions opts)
@@ -123,7 +143,12 @@ namespace SimplyUpdate.BuildUpdate
 
 			Console.WriteLine("Zip files.");
 			using (ZipArchive archive = ZipFile.Open(zipFile, ZipArchiveMode.Create))
-				files.ForEach(f => archive.CreateEntryFromFile(f, f.Remove(0, pathSource.FullName.Length + 1), CompressionLevel.Optimal));
+				files.ForEach(f =>
+				{
+					Console.Write("Zip file " + pathSource.FullName);
+					archive.CreateEntryFromFile(f, f.Remove(0, pathSource.FullName.Length + 1), CompressionLevel.Optimal);
+					Console.WriteLine(" .. OK");
+				});
 
 			return zipFile;
 		}
