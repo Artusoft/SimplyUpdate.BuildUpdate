@@ -145,8 +145,9 @@ namespace SimplyUpdate.BuildUpdate
 			using (ZipArchive archive = ZipFile.Open(zipFile, ZipArchiveMode.Create))
 				files.ForEach(f =>
 				{
-					Console.Write("Zip file " + pathSource.FullName);
-					archive.CreateEntryFromFile(f, f.Remove(0, pathSource.FullName.Length + 1), CompressionLevel.Optimal);
+					var filename = f.Remove(0, pathSource.FullName.Length + 1);
+					Console.Write("Zip file " + filename);
+					archive.CreateEntryFromFile(f, filename, CompressionLevel.Optimal);
 					Console.WriteLine(" .. OK");
 				});
 
