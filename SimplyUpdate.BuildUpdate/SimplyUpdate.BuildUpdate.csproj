@@ -6,7 +6,7 @@
     <Company>Artusoft</Company>
     <Authors>Artusoft</Authors>
     <Product>SimplyUpdate</Product>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
