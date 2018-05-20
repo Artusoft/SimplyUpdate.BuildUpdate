@@ -1,4 +1,4 @@
-﻿using McMaster.Extensions.CommandLineUtils;
+﻿using CommandLine;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using System;
@@ -16,65 +16,33 @@ namespace SimplyUpdate.BuildUpdate
 	{
 		public static int Main(string[] args)
 		{
-			var app = new CommandLineApplication();
-
-			app.HelpOption();
-			var optionSource = app.Option("-s|--source <PATH>", "The source path", CommandOptionType.SingleValue)
-				.IsRequired();
-
-			var optionDestination = app.Option("-d|--destination <PATH>", "The source path", CommandOptionType.SingleValue)
-				.IsRequired();
-			var optionDestinationType = app.Option("-t|--destinationtype <type>", "The destination type [azure, path]", CommandOptionType.SingleValue)
-				.IsRequired();
-			var optionContainer = app.Option("-c|--container <VALUE>", "The source path", CommandOptionType.SingleValue);
-			var optionAccountName = app.Option("-a|--accountname <VALUE>", "The source path", CommandOptionType.SingleValue);
-			var optionAccountKey = app.Option("-k|--accountkey <VALUE>", "The source path", CommandOptionType.SingleValue);
-			
-			app.OnExecute(async () =>
-			{
-				switch (optionDestinationType.Value())
-				{
-					case "azure":
-						await SendToAzure(optionSource.Value(),
-							optionDestination.Value(),
-							accountName: optionAccountName.Value(),
-							AccountKey: optionAccountKey.Value(),
-							containerName: optionContainer.HasValue()? optionContainer.Value():"public");
-						break;
-
-					case "path":
-						SendToPath(optionSource.Value(),
-							optionDestination.Value()
-							);
-						break;
-				}
-
-				return 0;
-			});
-
-			return app.Execute(args);
+			return CommandLine.Parser.Default.ParseArguments<AzureOptions, PathOptions>(args)
+							.MapResult(
+								(AzureOptions opts) => SendToAzure(opts).Result,
+								(PathOptions opts) => SendToPath(opts),
+								errs => 1);
 		}
 
-		public static async Task SendToAzure(String source, String destination, String containerName, String accountName,String AccountKey)
+		public static async Task<int> SendToAzure(AzureOptions opts)
 		{
-			var zipFile = CreateZipFile(source);
+			var zipFile = CreateZipFile(opts.Source);
 
 			Console.WriteLine("Hashing zip file.");
 			var MD5Hash = ComputeHash(zipFile);
 
 			Console.WriteLine("Upload zip file.");
-			var storageCredentials = new StorageCredentials(accountName, AccountKey);
+			var storageCredentials = new StorageCredentials(opts.AccountName, opts.AccountKey);
 			var cloudStorageAccount = new CloudStorageAccount(storageCredentials, true);
 			var cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
 
-			var container = cloudBlobClient.GetContainerReference(containerName);
+			var container = cloudBlobClient.GetContainerReference(opts.ContainerName);
 			await container.CreateIfNotExistsAsync();
 			
-			var zipBlob = container.GetBlockBlobReference(destination + "/software.zip");
+			var zipBlob = container.GetBlockBlobReference(opts.Destination + "/software.zip");
 			await zipBlob.UploadFromFileAsync(zipFile);
 
 			Console.WriteLine("Update version.");
-			var xmlBlob = container.GetBlockBlobReference(destination + "/software.xml");
+			var xmlBlob = container.GetBlockBlobReference(opts.Destination + "/software.xml");
 
 			XDocument doc;
 			if (await xmlBlob.ExistsAsync())
@@ -108,6 +76,8 @@ namespace SimplyUpdate.BuildUpdate
 			File.Delete(zipFile);
 
 			Console.WriteLine($"Published version {previousVer} -> {currentVer}");
+
+			return 0;
 		}
 
 		private static String CreateZipFile(String source)
@@ -139,18 +109,18 @@ namespace SimplyUpdate.BuildUpdate
 			return zipFile;
 		}
 
-		public static void SendToPath(String source, String destination)
+		public static int SendToPath(PathOptions opts)
 		{
-			var zipFile = CreateZipFile(source);
+			var zipFile = CreateZipFile(opts.Source);
 
 			Console.WriteLine("Hashing zip file.");
 			var MD5Hash = ComputeHash(zipFile);
 			Console.WriteLine("Copy zip file.");
 
-			File.Copy(zipFile, Path.Combine(destination, "software.zip"), true);
+			File.Copy(zipFile, Path.Combine(opts.Destination, "software.zip"), true);
 
 			Console.WriteLine("Update version.");
-			var xmlFile = Path.Combine(destination, "software.xml");
+			var xmlFile = Path.Combine(opts.Destination, "software.xml");
 			XDocument doc;
 			if (File.Exists(xmlFile))
 				doc = XDocument.Load(xmlFile);
@@ -183,6 +153,8 @@ namespace SimplyUpdate.BuildUpdate
 			System.IO.File.Delete(zipFile);
 
 			Console.WriteLine($"Published version {previousVer} -> {currentVer}");
+
+			return 0;
 		}
 
 		private static Byte[] ComputeHash(String filePath)
