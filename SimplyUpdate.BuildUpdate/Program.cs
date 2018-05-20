@@ -27,9 +27,6 @@ namespace SimplyUpdate.BuildUpdate
 		{
 			var zipFile = CreateZipFile(opts.Source);
 
-			Console.WriteLine("Hashing zip file.");
-			var MD5Hash = ComputeHash(zipFile);
-
 			Console.WriteLine("Upload zip file.");
 			var storageCredentials = new StorageCredentials(opts.AccountName, opts.AccountKey);
 			var cloudStorageAccount = new CloudStorageAccount(storageCredentials, true);
@@ -44,40 +41,58 @@ namespace SimplyUpdate.BuildUpdate
 			Console.WriteLine("Update version.");
 			var xmlBlob = container.GetBlockBlobReference(opts.Destination + "/software.xml");
 
-			XDocument doc;
-			if (await xmlBlob.ExistsAsync())
-				doc = XDocument.Parse(await xmlBlob.DownloadTextAsync());
-			else
-				doc = new XDocument(
-								new XElement("Liveupdate",
-								new XElement("Version", 0)
-								));
-
-			var nd = doc.Descendants("Version").FirstOrDefault();
-			Int32 previousVer=0;
-			Int32 currentVer=0;
-			if (nd != null)
-				nd.Value = (currentVer = (previousVer = Convert.ToInt32(nd.Value)) + 1).ToString();
-
-			nd = doc.Descendants("MD5").FirstOrDefault();
-			if (nd == null)
-				doc.Element("Liveupdate").Add(new XElement("MD5", Convert.ToBase64String(MD5Hash)));
-			else
-				nd.Value = Convert.ToBase64String(MD5Hash);
-
-			nd = doc.Descendants("FileLenght").FirstOrDefault();
-			if (nd == null)
-				doc.Element("Liveupdate").Add(new XElement("FileLenght", (new System.IO.FileInfo(zipFile)).Length));
-			else
-				nd.Value = (new System.IO.FileInfo(zipFile)).Length.ToString();
-
+			var doc = CreateOrUpdateVersionFile(
+				await xmlBlob.ExistsAsync() ? XDocument.Parse(await xmlBlob.DownloadTextAsync()) : null,
+				zipFile,
+				opts
+				);
+			
 			await xmlBlob.UploadTextAsync(doc.ToString());
 
 			File.Delete(zipFile);
 
-			Console.WriteLine($"Published version {previousVer} -> {currentVer}");
+			//Console.WriteLine($"Published version {previousVer} -> {currentVer}");
 
 			return 0;
+		}
+
+		private static XDocument CreateOrUpdateVersionFile(XDocument currentFile, String zipFile, BaseOptions opts)
+		{
+			XDocument retVal;
+			if (currentFile!=null)
+				retVal = currentFile;
+			else
+				retVal = new XDocument(
+								new XElement("Liveupdate",
+								new XElement("Version", 0)
+								));
+
+			var nd = retVal.Descendants("Version").FirstOrDefault();
+			Int32 previousVer = 0;
+			Int32 currentVer = 0;
+			if (nd != null)
+				if (opts.Version != 0)
+					nd.Value = (currentVer = opts.Version).ToString();
+				else
+					nd.Value = (currentVer = (previousVer = Convert.ToInt32(nd.Value)) + 1).ToString();
+
+			Console.WriteLine("Hashing zip file.");
+			var MD5Hash = ComputeHash(zipFile);
+			nd = retVal.Descendants("MD5").FirstOrDefault();
+			if (nd == null)
+				retVal.Element("Liveupdate").Add(new XElement("MD5", Convert.ToBase64String(MD5Hash)));
+			else
+				nd.Value = Convert.ToBase64String(MD5Hash);
+
+			nd = retVal.Descendants("FileLenght").FirstOrDefault();
+			if (nd == null)
+				retVal.Element("Liveupdate").Add(new XElement("FileLenght", (new System.IO.FileInfo(zipFile)).Length));
+			else
+				nd.Value = (new System.IO.FileInfo(zipFile)).Length.ToString();
+
+			Console.WriteLine($"Version {previousVer} -> {currentVer}");
+
+			return retVal;
 		}
 
 		private static String CreateZipFile(String source)
@@ -113,46 +128,25 @@ namespace SimplyUpdate.BuildUpdate
 		{
 			var zipFile = CreateZipFile(opts.Source);
 
-			Console.WriteLine("Hashing zip file.");
-			var MD5Hash = ComputeHash(zipFile);
 			Console.WriteLine("Copy zip file.");
 
 			File.Copy(zipFile, Path.Combine(opts.Destination, "software.zip"), true);
 
 			Console.WriteLine("Update version.");
 			var xmlFile = Path.Combine(opts.Destination, "software.xml");
-			XDocument doc;
+			XDocument currentDoc = null;
 			if (File.Exists(xmlFile))
-				doc = XDocument.Load(xmlFile);
-			else
-				doc = new XDocument(
-					new XElement("Liveupdate",
-					new XElement("Version", 0)
-					));
+				currentDoc = XDocument.Load(xmlFile);
 
-			var nd = doc.Descendants("Version").FirstOrDefault();
-			Int32 previousVer = 0;
-			Int32 currentVer = 0;
-			if (nd != null)
-				nd.Value = (currentVer = (previousVer = Convert.ToInt32(nd.Value)) + 1).ToString();
-
-			nd = doc.Descendants("MD5").FirstOrDefault();
-			if (nd == null)
-				doc.Element("Liveupdate").Add(new XElement("MD5", Convert.ToBase64String(MD5Hash)));
-			else
-				nd.Value = Convert.ToBase64String(MD5Hash);
-
-			nd = doc.Descendants("FileLenght").FirstOrDefault();
-			if (nd == null)
-				doc.Element("Liveupdate").Add(new XElement("FileLenght", (new System.IO.FileInfo(zipFile)).Length));
-			else
-				nd.Value = (new System.IO.FileInfo(zipFile)).Length.ToString();
-
+			var doc = CreateOrUpdateVersionFile(
+				currentDoc,
+				zipFile,
+				opts
+				);
+			
 			doc.Save(xmlFile);
 
-			System.IO.File.Delete(zipFile);
-
-			Console.WriteLine($"Published version {previousVer} -> {currentVer}");
+			File.Delete(zipFile);
 
 			return 0;
 		}
