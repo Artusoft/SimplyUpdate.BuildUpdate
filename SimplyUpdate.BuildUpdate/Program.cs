@@ -59,7 +59,7 @@ namespace SimplyUpdate.BuildUpdate
 				//	await xmlBlob.CreateSnapshotAsync();
 				await xmlBlob.UploadTextAsync(doc.ToString());
 
-				await zipSnapshot.DeleteAsync();
+				await zipSnapshot?.DeleteAsync();
 				File.Delete(zipFile);
 
 				return 0;
