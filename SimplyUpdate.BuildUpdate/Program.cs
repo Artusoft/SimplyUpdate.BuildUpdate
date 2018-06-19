@@ -137,6 +137,8 @@ namespace SimplyUpdate.BuildUpdate
 										 select f.FullName);
 			files.AddRange(from f in pathSource.GetFiles("*.config", SearchOption.AllDirectories)
 										 select f.FullName);
+			files.AddRange(from f in pathSource.GetFiles("*.json", SearchOption.AllDirectories)
+										 select f.FullName);
 			files.AddRange(from f in pathSource.GetFiles("*.exe", SearchOption.AllDirectories)
 										 where !f.Name.Contains("vshost")
 										 select f.FullName);
