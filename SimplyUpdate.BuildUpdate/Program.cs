@@ -88,7 +88,7 @@ namespace SimplyUpdate.BuildUpdate
 			Int32 previousVer = 0;
 			if (currentFile != null)
 			{
-				var ndVersion = retVal.Descendants("Version").FirstOrDefault();
+				var ndVersion = currentFile.Descendants("Version").FirstOrDefault();
 				Int32.TryParse(ndVersion.Value, out previousVer);
 			}
 
