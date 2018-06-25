@@ -30,7 +30,7 @@ namespace SimplyUpdate.BuildUpdate
 			CloudBlockBlob zipBlob = null;
 			try
 			{
-				var zipFile = CreateZipFile(opts.Source);
+				var zipFile = CreateZipFile(opts.Source,opts);
 
 				Console.WriteLine("Upload zip file.");
 				var storageCredentials = new StorageCredentials(opts.AccountName, opts.AccountKey);
@@ -119,7 +119,7 @@ namespace SimplyUpdate.BuildUpdate
 			return retVal;
 		}
 
-		private static String CreateZipFile(String source)
+		private static String CreateZipFile(String source, BaseOptions opts)
 		{
 			DirectoryInfo pathSource = new DirectoryInfo(source);
 
@@ -133,15 +133,17 @@ namespace SimplyUpdate.BuildUpdate
 
 			List<String> files = new List<string>();
 
-			files.AddRange(from f in pathSource.GetFiles("*.dll", SearchOption.AllDirectories)
-										 select f.FullName);
-			files.AddRange(from f in pathSource.GetFiles("*.config", SearchOption.AllDirectories)
-										 select f.FullName);
-			files.AddRange(from f in pathSource.GetFiles("*.json", SearchOption.AllDirectories)
-										 select f.FullName);
-			files.AddRange(from f in pathSource.GetFiles("*.exe", SearchOption.AllDirectories)
-										 where !f.Name.Contains("vshost")
-										 select f.FullName);
+			var excludeFiles = opts.ExcludeFiles
+				.SelectMany(p => pathSource.GetFiles(p, SearchOption.AllDirectories))
+				.Select(f => f.FullName)
+				.ToArray();
+
+			var includeFiles = opts.IncludeFiles
+				.SelectMany(p => pathSource.GetFiles(p, SearchOption.AllDirectories))
+				.Select(f => f.FullName)
+				.ToArray();
+
+			files.AddRange(includeFiles.Except(excludeFiles));
 
 			Console.WriteLine("Zip files.");
 			using (ZipArchive archive = ZipFile.Open(zipFile, ZipArchiveMode.Create))
@@ -158,7 +160,7 @@ namespace SimplyUpdate.BuildUpdate
 
 		public static int SendToPath(PathOptions opts)
 		{
-			var zipFile = CreateZipFile(opts.Source);
+			var zipFile = CreateZipFile(opts.Source,opts);
 
 			Console.WriteLine("Copy zip file.");
 

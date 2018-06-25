@@ -15,5 +15,11 @@ namespace SimplyUpdate.BuildUpdate
 
 		[Option('v', "version", Required = false, HelpText = "The version of release. If missing the version is in automatic increment")]
 		public Int32 Version { get; set; }
+
+		[Option('x', "exclude", Required = false, HelpText = "Files to exclude")]
+		public IEnumerable<string> ExcludeFiles { get; set; }
+
+		[Option('i', "include", Required = false, HelpText = "Files to exclude", Default = new String[] { "*.config", "*.exe", "*.dll" })]
+		public IEnumerable<string> IncludeFiles { get; set; }
 	}
 }
