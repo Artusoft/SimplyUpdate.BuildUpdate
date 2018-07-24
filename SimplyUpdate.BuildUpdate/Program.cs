@@ -114,6 +114,16 @@ namespace SimplyUpdate.BuildUpdate
 			else
 				nd.Value = (new System.IO.FileInfo(zipFile)).Length.ToString();
 
+			nd = retVal.Descendants("FileVersion").FirstOrDefault();
+			if (nd == null && !String.IsNullOrEmpty(opts.FileVersion))
+				retVal.Element("Liveupdate").Add(new XElement("FileVersion", opts.FileVersion));
+			else
+			{
+				if (!String.IsNullOrEmpty(opts.FileVersion))
+					nd.Value = opts.FileVersion;
+				else
+					nd.Remove();
+			}
 			Console.WriteLine($"Version {previousVer} -> {currentVer}");
 
 			return retVal;
