@@ -21,5 +21,8 @@ namespace SimplyUpdate.BuildUpdate
 
 		[Option('i', "include", Required = false, HelpText = "Files to exclude", Default = new String[] { "*.config", "*.exe", "*.dll" })]
 		public IEnumerable<string> IncludeFiles { get; set; }
+
+		[Option('f', "fileversion", Required = false, HelpText = "The version of the primary compiled assembly")]
+		public String FileVersion { get; set; }
 	}
 }

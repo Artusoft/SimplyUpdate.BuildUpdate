@@ -6,8 +6,8 @@ using System.Text;
 namespace SimplyUpdate.BuildUpdate
 {
 	[Verb("path", HelpText = "Publish update to file system path")]
-	class PathOptions :BaseOptions
-    {
+	class PathOptions : BaseOptions
+	{
 
 	}
 }

@@ -1,17 +1,21 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <Company>Artusoft</Company>
     <Authors>Artusoft</Authors>
     <Product>SimplyUpdate</Product>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<PackageId>SimplyUpdate.BuildUpdate</PackageId>
+		<AssemblyName>dotnet-BuildUpdate</AssemblyName>
+		<PackageType>DotnetCliTool</PackageType>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.2.1" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.1.1" />
+    <PackageReference Include="WindowsAzure.Storage" Version="9.3.0" />
   </ItemGroup>
 
 </Project>
