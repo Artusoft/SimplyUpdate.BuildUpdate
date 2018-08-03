@@ -50,7 +50,7 @@ namespace SimplyUpdate.BuildUpdate
 				var xmlBlob = container.GetBlockBlobReference(opts.Destination + "/software.xml");
 
 				var doc = CreateOrUpdateVersionFile(
-					await xmlBlob.ExistsAsync() ? XDocument.Parse(await xmlBlob.DownloadTextAsync()) : null,
+					(await xmlBlob.ExistsAsync()) ? XDocument.Parse(await xmlBlob.DownloadTextAsync()) : null,
 					zipFile,
 					opts
 					);
@@ -122,7 +122,7 @@ namespace SimplyUpdate.BuildUpdate
 				if (!String.IsNullOrEmpty(opts.FileVersion))
 					nd.Value = opts.FileVersion;
 				else
-					nd.Remove();
+					nd?.Remove();
 			}
 			Console.WriteLine($"Version {previousVer} -> {currentVer}");
 
